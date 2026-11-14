@@ -40,13 +40,14 @@ public class NodeConfig {
   private boolean openTransactionSort = false;
   private int maxTps = 1000;
   private int maxBlockInvPerSecond = 10;
-  private boolean openFullTcpDisconnect = false; //rename key
+  private boolean openFullTcpDisconnect = false; // rename key
 
   // node.discovery.* — HOCON merges into node { discovery { ... } }, auto-bound
   private DiscoveryConfig discovery = new DiscoveryConfig();
 
   // node.shutdown.* uses PascalCase nested keys (shutdown.BlockTime, etc.).
-  // These are optional (not in reference.conf), so @Setter(NONE) prevents ConfigBeanFactory
+  // These are optional (not in reference.conf), so @Setter(NONE) prevents
+  // ConfigBeanFactory
   // from requiring the keys; values are read manually in fromConfig().
   @Setter(lombok.AccessLevel.NONE)
   private String shutdownBlockTime = "";
@@ -86,12 +87,14 @@ public class NodeConfig {
   private boolean unsolidifiedBlockCheck = false;
   private int maxUnsolidifiedBlocks = 54;
   private String zenTokenId = "000000";
-  // allowShieldedTransactionApi is optional (commented out in reference.conf) and has a
-  // legacy key fallback; @Setter(NONE) prevents ConfigBeanFactory from requiring the key.
+  // allowShieldedTransactionApi is optional (commented out in reference.conf) and
+  // has a
+  // legacy key fallback; @Setter(NONE) prevents ConfigBeanFactory from requiring
+  // the key.
   @Setter(lombok.AccessLevel.NONE)
   private boolean allowShieldedTransactionApi = false;
 
-  //deprecate key
+  // deprecate key
   private double activeConnectFactor = 0.1;
   private double connectFactor = 0.6;
 
@@ -130,6 +133,7 @@ public class NodeConfig {
   private JsonRpcConfig jsonrpc = new JsonRpcConfig();
   private NodeBackupConfig backup = new NodeBackupConfig();
   private DynamicConfigSection dynamicConfig = new DynamicConfigSection();
+  private ListenerConfig listener = new ListenerConfig();
   private DnsConfig dns = new DnsConfig();
 
   // ===========================================================================
@@ -217,8 +221,7 @@ public class NodeConfig {
     private int pBFTPort = 50071;
 
     private int thread = 0;
-    private int maxConcurrentCallsPerConnection =
-        DEFAULT_MAX_CONCURRENT_CALLS_PER_CONNECTION;
+    private int maxConcurrentCallsPerConnection = DEFAULT_MAX_CONCURRENT_CALLS_PER_CONNECTION;
     private int flowControlWindow = 1048576;
     private long maxConnectionIdleInMillis = 0;
     private long maxConnectionAgeInMillis = 0;
@@ -272,6 +275,17 @@ public class NodeConfig {
 
   @Getter
   @Setter
+  public static class ListenerConfig {
+
+    // Enables peer connection lifecycle observations.
+    private boolean peerLifecycleLogEnable = false;
+
+    // Enables validated transaction and block inventory observations.
+    private boolean inventoryLogEnable = false;
+  }
+
+  @Getter
+  @Setter
   public static class DnsConfig {
 
     private List<String> treeUrls = new ArrayList<>();
@@ -293,7 +307,8 @@ public class NodeConfig {
   /**
    * Create NodeConfig from the "node" section of the application config.
    *
-   * <p>List fields (active, passive, fastForward, disabledApi) are read manually
+   * <p>
+   * List fields (active, passive, fastForward, disabledApi) are read manually
    * since ConfigBeanFactory expects typed bean lists, not string lists.
    */
   public static NodeConfig fromConfig(Config config) {
@@ -327,25 +342,28 @@ public class NodeConfig {
       nc.maxConnectionsWithSameIp = section.getInt("maxActiveNodesWithSameIp");
     }
 
-    // Legacy key fallback: node.allowShieldedTransactionApi wins fullNodeAllowShieldedTransaction
+    // Legacy key fallback: node.allowShieldedTransactionApi wins
+    // fullNodeAllowShieldedTransaction
     if (section.hasPath("allowShieldedTransactionApi")) {
-      nc.allowShieldedTransactionApi =
-          section.getBoolean("allowShieldedTransactionApi");
+      nc.allowShieldedTransactionApi = section.getBoolean("allowShieldedTransactionApi");
     } else if (section.hasPath("fullNodeAllowShieldedTransaction")) {
       // for compatibility with previous configuration
-      nc.allowShieldedTransactionApi =
-          section.getBoolean("fullNodeAllowShieldedTransaction");
+      nc.allowShieldedTransactionApi = section.getBoolean("fullNodeAllowShieldedTransaction");
       logger.warn("Configuring [node.fullNodeAllowShieldedTransaction] will be deprecated. "
           + "Please use [node.allowShieldedTransactionApi] instead.");
     }
 
-    // node.shutdown.* — optional PascalCase nested keys, not in reference.conf by default
+    // node.shutdown.* — optional PascalCase nested keys, not in reference.conf by
+    // default
     nc.shutdownBlockTime = section.hasPath("shutdown.BlockTime")
-        ? section.getString("shutdown.BlockTime") : "";
+        ? section.getString("shutdown.BlockTime")
+        : "";
     nc.shutdownBlockHeight = section.hasPath("shutdown.BlockHeight")
-        ? section.getLong("shutdown.BlockHeight") : -1;
+        ? section.getLong("shutdown.BlockHeight")
+        : -1;
     nc.shutdownBlockCount = section.hasPath("shutdown.BlockCount")
-        ? section.getLong("shutdown.BlockCount") : -1;
+        ? section.getLong("shutdown.BlockCount")
+        : -1;
 
     nc.postProcess();
     return nc;
@@ -370,8 +388,7 @@ public class NodeConfig {
           + "disables the limit; using the secure default of {}. Configure an explicit positive "
           + "value if more concurrency is required.",
           RpcConfig.DEFAULT_MAX_CONCURRENT_CALLS_PER_CONNECTION);
-      rpc.maxConcurrentCallsPerConnection =
-          RpcConfig.DEFAULT_MAX_CONCURRENT_CALLS_PER_CONNECTION;
+      rpc.maxConcurrentCallsPerConnection = RpcConfig.DEFAULT_MAX_CONCURRENT_CALLS_PER_CONNECTION;
     }
     if (rpc.maxConnectionIdleInMillis == 0) {
       rpc.maxConnectionIdleInMillis = Long.MAX_VALUE;
@@ -390,7 +407,8 @@ public class NodeConfig {
       solidity.threads = Runtime.getRuntime().availableProcessors();
     }
 
-    // validContractProto.threads: 0 = auto-detect (matches develop Args.java:743-746)
+    // validContractProto.threads: 0 = auto-detect (matches develop
+    // Args.java:743-746)
     if (validContractProto.threads == 0) {
       validContractProto.threads = Runtime.getRuntime().availableProcessors();
     }
@@ -499,9 +517,12 @@ public class NodeConfig {
   }
 
   /**
-   * "isOpenFullTcpDisconnect" config key has an "is" prefix that the JavaBean Introspector
-   * strips from boolean getter names, so the derived property is "openFullTcpDisconnect".
-   * "discovery.external.ip" may be HOCON null or the string "null"; both normalize to "".
+   * "isOpenFullTcpDisconnect" config key has an "is" prefix that the JavaBean
+   * Introspector
+   * strips from boolean getter names, so the derived property is
+   * "openFullTcpDisconnect".
+   * "discovery.external.ip" may be HOCON null or the string "null"; both
+   * normalize to "".
    */
   private static Config normalizeNonStandardKeys(Config section) {
     if (section.hasPath("isOpenFullTcpDisconnect")) {

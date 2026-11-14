@@ -71,7 +71,8 @@ public class Args extends CommonParameter {
 
   /**
    * Maps deprecated CLI option names to their config-file equivalents.
-   * Options not in this map have no config equivalent and are being removed entirely.
+   * Options not in this map have no config equivalent and are being removed
+   * entirely.
    */
   private static final Map<String, String> DEPRECATED_CLI_TO_CONFIG;
 
@@ -133,14 +134,11 @@ public class Args extends CommonParameter {
 
   @Autowired(required = false)
   @Getter
-  private static final ConcurrentHashMap<Long, BlockingQueue<ContractLogTrigger>>
-      solidityContractLogTriggerMap = new ConcurrentHashMap<>();
+  private static final ConcurrentHashMap<Long, BlockingQueue<ContractLogTrigger>> solidityContractLogTriggerMap = new ConcurrentHashMap<>();
 
   @Autowired(required = false)
   @Getter
-  private static final ConcurrentHashMap<Long, BlockingQueue<ContractEventTrigger>>
-      solidityContractEventTriggerMap = new ConcurrentHashMap<>();
-
+  private static final ConcurrentHashMap<Long, BlockingQueue<ContractEventTrigger>> solidityContractEventTriggerMap = new ConcurrentHashMap<>();
 
   /**
    * set parameters.
@@ -162,10 +160,12 @@ public class Args extends CommonParameter {
 
     // Resolve config file path
     configFilePath = StringUtils.isNoneBlank(cmd.shellConfFileName)
-        ? cmd.shellConfFileName : confFileName;
+        ? cmd.shellConfFileName
+        : confFileName;
     Config config = Configuration.getByFileName(configFilePath);
 
-    // 2. Config overrides defaults (event config bean is read here but not yet applied)
+    // 2. Config overrides defaults (event config bean is read here but not yet
+    // applied)
     applyConfigParams(config);
 
     // 3. CLI overrides Config (highest priority, including --es → eventSubscribe)
@@ -206,7 +206,8 @@ public class Args extends CommonParameter {
   /**
    * Bridge StorageConfig bean to PARAMETER.storage fields.
    * Reads all storage config from one StorageConfig bean instance.
-   * Config param is still needed for setDefaultDbOptions/setCacheStrategies/setDbRoots
+   * Config param is still needed for
+   * setDefaultDbOptions/setCacheStrategies/setDbRoots
    * which use raw Config for dynamic nested objects.
    */
   private static void applyStorageConfig(StorageConfig sc) {
@@ -236,7 +237,8 @@ public class Args extends CommonParameter {
 
     // Dynamic nested objects use StorageConfig's raw storage sub-tree
     // setDefaultDbOptions must be called before setPropertyMapFromBean because
-    // createPropertyFromBean calls newDefaultDbOptions which needs defaultDbOptions initialized
+    // createPropertyFromBean calls newDefaultDbOptions which needs defaultDbOptions
+    // initialized
     PARAMETER.storage.setDefaultDbOptions(sc);
     PARAMETER.storage.setPropertyMapFromBean(sc.getProperties());
     PARAMETER.storage.setCacheStrategies(sc.getRawStorageConfig());
@@ -305,7 +307,8 @@ public class Args extends CommonParameter {
     PARAMETER.trxExpirationTimeInMilliseconds = mc.getTrxExpirationTimeInMilliseconds();
     PARAMETER.blockNumForEnergyLimit = mc.getBlockNumForEnergyLimit();
     // seed.node — top-level config section, not under "node"
-    // Config structure is arguably misplaced but preserved for backward compatibility
+    // Config structure is arguably misplaced but preserved for backward
+    // compatibility
     PARAMETER.seedNode = new SeedNode();
     PARAMETER.seedNode.setAddressList(resolveInetSocketAddressList(mc.getSeedNodeIpList()));
   }
@@ -350,7 +353,8 @@ public class Args extends CommonParameter {
 
   /**
    * Bridge EventConfig bean values to CommonParameter fields.
-   * Converts EventConfig (raw bean) into EventPluginConfig and FilterQuery (business objects).
+   * Converts EventConfig (raw bean) into EventPluginConfig and FilterQuery
+   * (business objects).
    */
   private static void applyEventConfig(EventConfig ec) {
     // cmd parameter has higher priority
@@ -432,7 +436,8 @@ public class Args extends CommonParameter {
 
   /**
    * Bridge MetricsConfig bean values to CommonParameter fields.
-   * Note: node.metricsEnable is handled in applyNodeConfig (it's a node-level field).
+   * Note: node.metricsEnable is handled in applyNodeConfig (it's a node-level
+   * field).
    */
   private static void applyMetricsConfig(MetricsConfig mc) {
     PARAMETER.metricsPrometheusEnable = mc.getPrometheus().isEnable();
@@ -467,11 +472,9 @@ public class Args extends CommonParameter {
     PARAMETER.allowTvmVote = cc.getAllowTvmVote();
     PARAMETER.allowTvmLondon = cc.getAllowTvmLondon();
     PARAMETER.allowTvmCompatibleEvm = cc.getAllowTvmCompatibleEvm();
-    PARAMETER.allowHigherLimitForMaxCpuTimeOfOneTx =
-        cc.getAllowHigherLimitForMaxCpuTimeOfOneTx();
+    PARAMETER.allowHigherLimitForMaxCpuTimeOfOneTx = cc.getAllowHigherLimitForMaxCpuTimeOfOneTx();
     PARAMETER.allowNewRewardAlgorithm = cc.getAllowNewRewardAlgorithm();
-    PARAMETER.allowOptimizedReturnValueOfChainId =
-        cc.getAllowOptimizedReturnValueOfChainId();
+    PARAMETER.allowOptimizedReturnValueOfChainId = cc.getAllowOptimizedReturnValueOfChainId();
     PARAMETER.allowTvmShangHai = cc.getAllowTvmShangHai();
     PARAMETER.allowOldRewardOpt = cc.getAllowOldRewardOpt();
     PARAMETER.allowEnergyAdjustment = cc.getAllowEnergyAdjustment();
@@ -504,12 +507,13 @@ public class Args extends CommonParameter {
 
   /**
    * Bridge NodeConfig bean values to CommonParameter fields.
-   * Some fields require post-binding range checks or dynamic defaults (e.g. CPUs/2),
+   * Some fields require post-binding range checks or dynamic defaults (e.g.
+   * CPUs/2),
    * which are applied here after copying the bean value.
    *
    * @param nc the NodeConfig bean populated from config.conf "node" section
-   *               node.discovery /  (dot-notation paths
-   *               not part of the NodeConfig bean)
+   *           node.discovery / (dot-notation paths
+   *           not part of the NodeConfig bean)
    */
   @SuppressWarnings("checkstyle:MethodLength")
   private static void applyNodeConfig(NodeConfig nc) {
@@ -564,13 +568,20 @@ public class Args extends CommonParameter {
     // ---- P2P sub-bean ----
     PARAMETER.nodeP2pVersion = nc.getP2p().getVersion();
 
-    // ---- DNS sub-bean (tree URLs only — publish config uses complex validation) ----
+    // ---- DNS sub-bean (tree URLs only — publish config uses complex validation)
+    // ----
     PARAMETER.dnsTreeUrls = nc.getDns().getTreeUrls().isEmpty()
-        ? new ArrayList<>() : new ArrayList<>(nc.getDns().getTreeUrls());
+        ? new ArrayList<>()
+        : new ArrayList<>(nc.getDns().getTreeUrls());
 
     // ---- Dynamic config sub-bean ----
     PARAMETER.dynamicConfigEnable = nc.getDynamicConfig().isEnable();
     PARAMETER.dynamicConfigCheckInterval = nc.getDynamicConfig().getCheckInterval();
+
+    // ---- Listener sub-bean ----
+    NodeConfig.ListenerConfig listener = nc.getListener();
+    PARAMETER.peerLifecycleLogEnable = listener.isPeerLifecycleLogEnable();
+    PARAMETER.inventoryLogEnable = listener.isInventoryLogEnable();
 
     // ---- Flat scalar fields ----
     PARAMETER.nodeEffectiveCheckEnable = nc.isEffectiveCheckEnable();
@@ -708,7 +719,8 @@ public class Args extends CommonParameter {
     nodeConfig = NodeConfig.fromConfig(config);
     applyNodeConfig(nodeConfig);
 
-    // vm.minTimeRatio, vm.maxTimeRatio, vm.longRunningTime already handled by VmConfig above
+    // vm.minTimeRatio, vm.maxTimeRatio, vm.longRunningTime already handled by
+    // VmConfig above
 
     // Storage config: bind from config.conf "storage" section
     PARAMETER.storage = new Storage();
@@ -738,7 +750,8 @@ public class Args extends CommonParameter {
     committeeConfig = CommitteeConfig.fromConfig(config);
     applyCommitteeConfig(committeeConfig);
 
-    // shielded transaction API, active/passive/fastForward — handled in applyNodeConfig
+    // shielded transaction API, active/passive/fastForward — handled in
+    // applyNodeConfig
 
     // Rate limiter config: bind from config.conf "rate.limiter" section
     rateLimiterConfig = RateLimiterConfig.fromConfig(config);
@@ -886,8 +899,10 @@ public class Args extends CommonParameter {
       PARAMETER.logbackPath = cmd.logbackPath;
     }
     // seedNodes is a JCommander positional (main) parameter, which does not support
-    // isAssigned(). An empty-check is used instead — this is safe because the default
-    // is an empty list, so non-empty means the user explicitly passed values on CLI.
+    // isAssigned(). An empty-check is used instead — this is safe because the
+    // default
+    // is an empty list, so non-empty means the user explicitly passed values on
+    // CLI.
     if (!cmd.seedNodes.isEmpty()) {
       logger.warn("Positional seed-node arguments are deprecated. "
           + "Please use seed.node.ip.list in the config file instead.");
@@ -984,7 +999,6 @@ public class Args extends CommonParameter {
   // getInetAddress removed — use filterInetSocketAddress
 
   // getEventPluginConfig removed — logic moved to applyEventConfig()
-
 
   public static PublishConfig loadDnsPublishConfig(NodeConfig nodeConfig) {
     PublishConfig publishConfig = new PublishConfig();
@@ -1217,8 +1231,8 @@ public class Args extends CommonParameter {
 
     StringBuilder helpStr = new StringBuilder();
     helpStr.append("Name:\n\tFullNode - the java-tron command line interface\n");
-    String programName = Strings.isNullOrEmpty(jCommander.getProgramName()) ? "FullNode.jar" :
-        jCommander.getProgramName();
+    String programName = Strings.isNullOrEmpty(jCommander.getProgramName()) ? "FullNode.jar"
+        : jCommander.getProgramName();
     helpStr.append(String.format("%nUsage: java -jar %s [options] [seedNode <seedNode> ...]%n",
         programName));
     helpStr.append(String.format(
@@ -1291,11 +1305,11 @@ public class Args extends CommonParameter {
   }
 
   private static Map<String, String[]> getOptionGroup() {
-    String[] tronOption = new String[] {"version", "help", "shellConfFileName", "logbackPath",
-        "eventSubscribe", "solidityNode", "keystoreFactory"};
-    String[] dbOption = new String[] {"outputDirectory"};
-    String[] witnessOption = new String[] {"witness", "privateKey"};
-    String[] vmOption = new String[] {"debug"};
+    String[] tronOption = new String[] { "version", "help", "shellConfFileName", "logbackPath",
+        "eventSubscribe", "solidityNode", "keystoreFactory" };
+    String[] dbOption = new String[] { "outputDirectory" };
+    String[] witnessOption = new String[] { "witness", "privateKey" };
+    String[] vmOption = new String[] { "debug" };
 
     Map<String, String[]> optionGroupMap = new LinkedHashMap<>();
     optionGroupMap.put("tron", tronOption);
@@ -1315,4 +1329,3 @@ public class Args extends CommonParameter {
     return optionGroupMap;
   }
 }
-

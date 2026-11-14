@@ -234,7 +234,8 @@ public class CommonParameter {
   @Getter
   @Setter
   public long maxConnectionAgeInMillis;
-  // Refers to RPC (gRPC) max message size; see httpMaxMessageSize / jsonRpcMaxMessageSize
+  // Refers to RPC (gRPC) max message size; see httpMaxMessageSize /
+  // jsonRpcMaxMessageSize
   // below for the HTTP / JSON-RPC counterparts.
   @Getter
   @Setter
@@ -556,6 +557,12 @@ public class CommonParameter {
   @Getter
   @Setter
   public boolean openPrintLog = true;
+  @Getter
+  @Setter
+  public boolean peerLifecycleLogEnable = false;
+  @Getter
+  @Setter
+  public boolean inventoryLogEnable = false;
   @Getter
   @Setter
   public boolean openTransactionSort = false;
