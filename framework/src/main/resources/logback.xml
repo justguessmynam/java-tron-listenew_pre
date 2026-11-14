@@ -85,6 +85,39 @@
     <appender-ref ref="GRPC_FILE"/>
   </appender>
 
+  <!-- Dedicated rolling file for listener observations. -->
+  <appender name="LISTENER_FILE"
+    class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <file>./logs/listener/listener.log</file>
+    <rollingPolicy
+      class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+      <fileNamePattern>
+        ./logs/listener/listener-%d{yyyy-MM-dd}.%i.log.gz
+      </fileNamePattern>
+      <maxFileSize>500MB</maxFileSize>
+      <maxHistory>40</maxHistory>
+      <totalSizeCap>20GB</totalSizeCap>
+    </rollingPolicy>
+    <encoder charset="UTF-8">
+      <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %msg%n</pattern>
+      <charset>UTF-8</charset>
+    </encoder>
+  </appender>
+
+  <!--
+    Listener observations are queued asynchronously so that file I/O
+    does not block peer network-processing threads. When the queue is
+    full, listener events may be discarded instead of blocking.
+  -->
+  <appender name="LISTENER_ASYNC"
+    class="ch.qos.logback.classic.AsyncAppender">
+    <queueSize>32768</queueSize>
+    <discardingThreshold>0</discardingThreshold>
+    <neverBlock>true</neverBlock>
+    <maxFlushTime>5000</maxFlushTime>
+    <appender-ref ref="LISTENER_FILE"/>
+  </appender>
+
   <appender class="ch.qos.logback.classic.AsyncAppender" name="ASYNC">
     <!-- Don't discard INFO, DEBUG, TRACE events in case of queue is 80% full -->
     <discardingThreshold>0</discardingThreshold>
@@ -105,6 +138,11 @@
     <appender-ref ref="ASYNC"/>
     <appender-ref ref="METRICS"/>
   </root>
+
+  <!-- Listener events are isolated from the main tron.log file. -->
+  <logger name="LISTENER" level="INFO" additivity="false">
+    <appender-ref ref="LISTENER_ASYNC"/>
+  </logger>
 
   <logger level="INFO" name="app"/>
   <logger level="INFO" name="net"/>
