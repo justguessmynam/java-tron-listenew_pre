@@ -3,6 +3,8 @@ package org.tron.core.net.messagehandler;
 import java.util.HashSet;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.tron.common.utils.Sha256Hash;
@@ -22,6 +24,9 @@ import org.tron.protos.Protocol.Inventory.InventoryType;
 @Component
 public class InventoryMsgHandler implements TronMsgHandler {
 
+  // Dedicated logger for validated transaction and block inventory events.
+  private static final Logger invLogger = LoggerFactory.getLogger("INV_LISTENER");
+
   @Autowired
   private TronNetDelegate tronNetDelegate;
 
@@ -40,7 +45,23 @@ public class InventoryMsgHandler implements TronMsgHandler {
       return;
     }
 
+    int batchSize = inventoryMessage.getHashList().size();
+
+    /*
+     * remote is the announcing peer; active indicates outbound/inbound direction.
+     * type is TRX or BLOCK; latencyMs is the average channel latency.
+     * batchSize is the number of hashes in this message; hash identifies one item.
+     */
     for (Sha256Hash id : inventoryMessage.getHashList()) {
+      invLogger.info(
+          "INV remote={} active={} type={} latencyMs={} batchSize={} hash={}",
+          peer.getInetSocketAddress(),
+          peer.getChannel().isActive(),
+          type,
+          peer.getChannel().getAvgLatency(),
+          batchSize,
+          id);
+
       Item item = new Item(id, type);
       peer.getAdvInvReceive().put(item, System.currentTimeMillis());
       advService.addInv(item);
@@ -83,7 +104,7 @@ public class InventoryMsgHandler implements TronMsgHandler {
 
     if (type.equals(InventoryType.TRX) && transactionsMsgHandler.isBusy()) {
       logger.warn("Drop inv: {} size: {} from Peer {}, transactionsMsgHandler is busy",
-              type, size, peer.getInetAddress());
+          type, size, peer.getInetAddress());
       if (Args.getInstance().isOpenPrintLog()) {
         logger.warn("[isBusy]Drop tx list is: {}", inventoryMessage.getHashList());
       }
