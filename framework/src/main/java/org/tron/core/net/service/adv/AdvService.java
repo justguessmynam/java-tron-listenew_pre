@@ -41,6 +41,9 @@ import org.tron.protos.Protocol.Inventory.InventoryType;
 @Slf4j(topic = "net")
 @Component
 public class AdvService {
+  // Listener nodes cache messages for fetching but do not advertise INV.
+  private static final boolean INVENTORY_SPREAD_ENABLED = false;
+
   private final int MAX_INV_TO_FETCH_CACHE_SIZE = 100_000;
   private final int MAX_TRX_CACHE_SIZE = 50_000;
   private final int MAX_BLOCK_CACHE_SIZE = 10;
@@ -86,13 +89,15 @@ public class AdvService {
 
   public void init() {
 
-    spreadExecutor.scheduleWithFixedDelay(() -> {
-      try {
-        consumerInvToSpread();
-      } catch (Exception exception) {
-        logger.error("Spread thread error", exception);
-      }
-    }, 100, 30, TimeUnit.MILLISECONDS);
+    if (INVENTORY_SPREAD_ENABLED) {
+      spreadExecutor.scheduleWithFixedDelay(() -> {
+        try {
+          consumerInvToSpread();
+        } catch (Exception exception) {
+          logger.error("Spread thread error", exception);
+        }
+      }, 100, 30, TimeUnit.MILLISECONDS);
+    }
 
     fetchExecutor.scheduleWithFixedDelay(() -> {
       try {
@@ -159,8 +164,8 @@ public class AdvService {
   public int fastBroadcastTransaction(TransactionMessage msg) {
 
     List<PeerConnection> peers = tronNetDelegate.getActivePeer().stream()
-            .filter(peer -> !peer.isNeedSyncFromPeer() && !peer.isNeedSyncFromUs())
-            .collect(Collectors.toList());
+        .filter(peer -> !peer.isNeedSyncFromPeer() && !peer.isNeedSyncFromUs())
+        .collect(Collectors.toList());
 
     if (peers.size() == 0) {
       logger.warn("Broadcast transaction {} failed, no connection", msg.getMessageId());
@@ -176,9 +181,9 @@ public class AdvService {
     InventoryMessage inventoryMessage = new InventoryMessage(list, InventoryType.TRX);
 
     int peersCount = 0;
-    for (PeerConnection peer: peers) {
+    for (PeerConnection peer : peers) {
       if (peer.getAdvInvReceive().getIfPresent(item) == null
-              && peer.getAdvInvSpread().getIfPresent(item) == null) {
+          && peer.getAdvInvSpread().getIfPresent(item) == null) {
         peersCount++;
         peer.getAdvInvSpread().put(item, Time.getCurrentMillis());
         peer.sendMessage(inventoryMessage);
@@ -222,6 +227,10 @@ public class AdvService {
       return;
     }
 
+    if (!INVENTORY_SPREAD_ENABLED) {
+      return;
+    }
+
     invToSpread.put(item, System.currentTimeMillis());
 
     if (InventoryType.BLOCK.equals(item.getType())) {
@@ -230,25 +239,26 @@ public class AdvService {
   }
 
   /*
-  public void fastForward(BlockMessage msg) {
-    Item item = new Item(msg.getBlockId(), InventoryType.BLOCK);
-    List<PeerConnection> peers = tronNetDelegate.getActivePeer().stream()
-        .filter(peer -> !peer.isNeedSyncFromPeer() && !peer.isNeedSyncFromUs())
-        .filter(peer -> peer.getAdvInvReceive().getIfPresent(item) == null
-            && peer.getAdvInvSpread().getIfPresent(item) == null)
-        .collect(Collectors.toList());
-
-    if (!fastForward) {
-      peers = peers.stream().filter(peer -> peer.isFastForwardPeer()).collect(Collectors.toList());
-    }
-
-    peers.forEach(peer -> {
-      peer.fastSend(msg);
-      peer.getAdvInvSpread().put(item, System.currentTimeMillis());
-      peer.setFastForwardBlock(msg.getBlockId());
-    });
-  }
-  */
+   * public void fastForward(BlockMessage msg) {
+   * Item item = new Item(msg.getBlockId(), InventoryType.BLOCK);
+   * List<PeerConnection> peers = tronNetDelegate.getActivePeer().stream()
+   * .filter(peer -> !peer.isNeedSyncFromPeer() && !peer.isNeedSyncFromUs())
+   * .filter(peer -> peer.getAdvInvReceive().getIfPresent(item) == null
+   * && peer.getAdvInvSpread().getIfPresent(item) == null)
+   * .collect(Collectors.toList());
+   * 
+   * if (!fastForward) {
+   * peers = peers.stream().filter(peer ->
+   * peer.isFastForwardPeer()).collect(Collectors.toList());
+   * }
+   * 
+   * peers.forEach(peer -> {
+   * peer.fastSend(msg);
+   * peer.getAdvInvSpread().put(item, System.currentTimeMillis());
+   * peer.setFastForwardBlock(msg.getBlockId());
+   * });
+   * }
+   */
 
   public void onDisconnect(PeerConnection peer) {
     if (!peer.getAdvInvRequest().isEmpty()) {
@@ -280,7 +290,7 @@ public class AdvService {
       invToFetch.forEach((item, time) -> {
         if (time < now - TIMEOUT) {
           logger.info("This obj is too late to fetch, type: {} hash: {}", item.getType(),
-                  item.getHash());
+              item.getHash());
           invToFetch.remove(item);
           invToFetchCache.invalidate(item);
           return;
@@ -317,7 +327,7 @@ public class AdvService {
       if (peer.getAdvInvReceive().getIfPresent(item) == null
           && peer.getAdvInvSpread().getIfPresent(item) == null
           && !(item.getType().equals(InventoryType.BLOCK)
-          && System.currentTimeMillis() - time > BLOCK_PRODUCED_INTERVAL)) {
+              && System.currentTimeMillis() - time > BLOCK_PRODUCED_INTERVAL)) {
         peer.getAdvInvSpread().put(item, Time.getCurrentMillis());
         invSender.add(item, peer);
       }
@@ -329,8 +339,7 @@ public class AdvService {
 
   class InvSender {
 
-    private HashMap<PeerConnection, HashMap<InventoryType, LinkedList<Sha256Hash>>> send
-        = new HashMap<>();
+    private HashMap<PeerConnection, HashMap<InventoryType, LinkedList<Sha256Hash>>> send = new HashMap<>();
 
     public void clear() {
       this.send.clear();
