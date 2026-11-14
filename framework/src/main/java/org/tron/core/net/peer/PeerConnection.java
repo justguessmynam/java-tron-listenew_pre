@@ -183,11 +183,13 @@ public class PeerConnection {
      * remote is the peer address, active indicates outbound/inbound direction,
      * and startTime is the channel creation time in epoch milliseconds.
      */
-    listenerLogger.info(
-        "PEER_CHANNEL_OPEN remote={} active={} startTime={}",
-        channel.getInetSocketAddress(),
-        channel.isActive(),
-        channel.getStartTime());
+    if (Args.getInstance().isPeerLifecycleLogEnable()) {
+      listenerLogger.info(
+          "PEER_CHANNEL_OPEN remote={} active={} startTime={}",
+          channel.getInetSocketAddress(),
+          channel.isActive(),
+          channel.getStartTime());
+    }
 
     if (relayNodes != null
         && relayNodes.stream().anyMatch(n -> n.getAddress().equals(channel.getInetAddress()))) {
@@ -233,14 +235,16 @@ public class PeerConnection {
      * localHead and remoteHead are the block heights advertised in
      * the exchanged HELLO messages.
      */
-    listenerLogger.info(
-        "PEER_HANDSHAKE_COMPLETE remote={} active={} latencyMs={} "
-            + "localHead={} remoteHead={}",
-        channel.getInetSocketAddress(),
-        channel.isActive(),
-        channel.getAvgLatency(),
-        headBlockNum,
-        peerHeadBlockNum);
+    if (Args.getInstance().isPeerLifecycleLogEnable()) {
+      listenerLogger.info(
+          "PEER_HANDSHAKE_COMPLETE remote={} active={} latencyMs={} "
+              + "localHead={} remoteHead={}",
+          channel.getInetSocketAddress(),
+          channel.isActive(),
+          channel.getAvgLatency(),
+          headBlockNum,
+          peerHeadBlockNum);
+    }
 
     if (peerHeadBlockNum > headBlockNum) {
       needSyncFromUs = false;
@@ -255,33 +259,31 @@ public class PeerConnection {
   }
 
   public void onDisconnect() {
-    /*
-     * localReason and remoteReason preserve the reasons recorded for
-     * each side. reason selects localReason first, then remoteReason,
-     * and falls back to UNKNOWN.
-     */
-    Protocol.ReasonCode localReason = nodeStatistics == null
-        ? null
-        : nodeStatistics.getLocalDisconnectReason();
-    Protocol.ReasonCode remoteReason = nodeStatistics == null
-        ? null
-        : nodeStatistics.getRemoteDisconnectReason();
-    Protocol.ReasonCode reason = nodeStatistics == null
-        ? Protocol.ReasonCode.UNKNOWN
-        : nodeStatistics.getDisconnectReason();
-    /*
-     * Record the final channel close. durationMs is the total channel
-     * lifetime from channel creation to this close event.
-     */
-    listenerLogger.info(
-        "PEER_CHANNEL_CLOSED remote={} active={} durationMs={} reason={} "
-            + "localReason={} remoteReason={}",
-        channel.getInetSocketAddress(),
-        channel.isActive(),
-        Math.max(0L, System.currentTimeMillis() - channel.getStartTime()),
-        reason,
-        localReason,
-        remoteReason);
+    if (Args.getInstance().isPeerLifecycleLogEnable()) {
+      Protocol.ReasonCode localReason = nodeStatistics == null
+          ? null
+          : nodeStatistics.getLocalDisconnectReason();
+      Protocol.ReasonCode remoteReason = nodeStatistics == null
+          ? null
+          : nodeStatistics.getRemoteDisconnectReason();
+      Protocol.ReasonCode reason = nodeStatistics == null
+          ? Protocol.ReasonCode.UNKNOWN
+          : nodeStatistics.getDisconnectReason();
+
+      /*
+       * localReason and remoteReason are reasons recorded by each side;
+       * reason is the final selected disconnect reason.
+       */
+      listenerLogger.info(
+          "PEER_CHANNEL_CLOSED remote={} active={} durationMs={} reason={} "
+              + "localReason={} remoteReason={}",
+          channel.getInetSocketAddress(),
+          channel.isActive(),
+          Math.max(0L, System.currentTimeMillis() - channel.getStartTime()),
+          reason,
+          localReason,
+          remoteReason);
+    }
 
     syncService.onDisconnect(this);
     advService.onDisconnect(this);
@@ -340,12 +342,14 @@ public class PeerConnection {
      * durationMs is the current channel lifetime and reason is the
      * Protocol.ReasonCode selected by the local node.
      */
-    listenerLogger.info(
-        "PEER_DISCONNECT_REQUEST remote={} active={} durationMs={} reason={}",
-        channel.getInetSocketAddress(),
-        channel.isActive(),
-        Math.max(0L, System.currentTimeMillis() - channel.getStartTime()),
-        code);
+    if (Args.getInstance().isPeerLifecycleLogEnable()) {
+      listenerLogger.info(
+          "PEER_DISCONNECT_REQUEST remote={} active={} durationMs={} reason={}",
+          channel.getInetSocketAddress(),
+          channel.isActive(),
+          Math.max(0L, System.currentTimeMillis() - channel.getStartTime()),
+          code);
+    }
     sendMessage(new DisconnectMessage(code));
     processDisconnect(code);
     nodeStatistics.nodeDisconnectedLocal(code);
