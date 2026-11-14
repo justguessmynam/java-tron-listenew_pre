@@ -50,7 +50,7 @@ public class ArgsTest {
 
   @Test
   public void get() {
-    Args.setParam(new String[] {"--keystore-factory"}, TestConstants.TEST_CONF);
+    Args.setParam(new String[] { "--keystore-factory" }, TestConstants.TEST_CONF);
 
     CommonParameter parameter = Args.getInstance();
 
@@ -99,14 +99,13 @@ public class ArgsTest {
     Assert.assertEquals(54, parameter.getMaxUnsolidifiedBlocks());
     Assert.assertEquals(false, parameter.isUnsolidifiedBlockCheck());
     Assert.assertEquals(1000, parameter.getMaxCreateAccountTxSize());
-    //Assert.assertEquals(30, args.getSyncNodeCount());
+    // Assert.assertEquals(30, args.getSyncNodeCount());
 
     // gRPC network configs checking
     Assert.assertEquals(50051, parameter.getRpcPort());
     Assert.assertEquals(100, parameter.getMaxConcurrentCallsPerConnection());
     Assert
-        .assertEquals(NettyServerBuilder
-            .DEFAULT_FLOW_CONTROL_WINDOW, parameter.getFlowControlWindow());
+        .assertEquals(NettyServerBuilder.DEFAULT_FLOW_CONTROL_WINDOW, parameter.getFlowControlWindow());
     Assert.assertEquals(60000L, parameter.getMaxConnectionIdleInMillis());
     Assert.assertEquals(Long.MAX_VALUE, parameter.getMaxConnectionAgeInMillis());
     Assert.assertEquals(GrpcUtil.DEFAULT_MAX_MESSAGE_SIZE, parameter.getMaxMessageSize());
@@ -147,8 +146,41 @@ public class ArgsTest {
   }
 
   @Test
+  public void testListenerConfigApplied() {
+    Map<String, String> values = new HashMap<>();
+    values.put("storage.db.directory", "database");
+
+    Config config = ConfigFactory.parseMap(values)
+        .withFallback(ConfigFactory.defaultReference());
+
+    try {
+      Args.applyConfigParams(config);
+
+      Assert.assertFalse(Args.getInstance().isPeerLifecycleLogEnable());
+      Assert.assertFalse(Args.getInstance().isInventoryLogEnable());
+    } finally {
+      Args.clearParam();
+    }
+
+    values.put("node.listener.peerLifecycleLogEnable", "true");
+    values.put("node.listener.inventoryLogEnable", "true");
+
+    config = ConfigFactory.parseMap(values)
+        .withFallback(ConfigFactory.defaultReference());
+
+    try {
+      Args.applyConfigParams(config);
+
+      Assert.assertTrue(Args.getInstance().isPeerLifecycleLogEnable());
+      Assert.assertTrue(Args.getInstance().isInventoryLogEnable());
+    } finally {
+      Args.clearParam();
+    }
+  }
+
+  @Test
   public void testInitService() {
-    Map<String,String> storage = new HashMap<>();
+    Map<String, String> storage = new HashMap<>();
     // avoid the exception for the missing storage
     storage.put("storage.db.directory", "database");
     Config config = ConfigFactory.defaultOverrides()
@@ -283,11 +315,13 @@ public class ArgsTest {
   /**
    * Verify that CLI storage parameters correctly override config file values.
    *
-   * <p>config-test.conf defines: db.directory = "database", db.engine = "LEVELDB".
+   * <p>
+   * config-test.conf defines: db.directory = "database", db.engine = "LEVELDB".
    * When CLI passes different values (e.g. --storage-db-directory cli-db-dir),
    * the Storage object should reflect the CLI values, not the config file values.
    *
-   * <p>This ensures the three-layer override chain works:
+   * <p>
+   * This ensures the three-layer override chain works:
    * Storage defaults -> config file -> CLI arguments.
    */
   @Test
@@ -328,7 +362,7 @@ public class ArgsTest {
    */
   @Test
   public void testCliEsOverridesConfig() {
-    Args.setParam(new String[] {"--es"}, TestConstants.TEST_CONF);
+    Args.setParam(new String[] { "--es" }, TestConstants.TEST_CONF);
     Assert.assertTrue(Args.getInstance().isEventSubscribe());
     Args.clearParam();
   }
@@ -342,16 +376,18 @@ public class ArgsTest {
    */
   @Test
   public void testCliEsBuildsEventPluginConfig() {
-    Args.setParam(new String[] {"--es"}, TestConstants.TEST_CONF);
+    Args.setParam(new String[] { "--es" }, TestConstants.TEST_CONF);
     Assert.assertTrue(Args.getInstance().isEventSubscribe());
     Assert.assertNotNull(Args.getInstance().getEventPluginConfig());
     Args.clearParam();
   }
 
   /**
-   * Verify that config file storage values are applied when no CLI override is present.
+   * Verify that config file storage values are applied when no CLI override is
+   * present.
    *
-   * <p>config-test.conf defines: db.directory = "database", db.engine = "LEVELDB".
+   * <p>
+   * config-test.conf defines: db.directory = "database", db.engine = "LEVELDB".
    * On ARM64 CI, Gradle injects -Dstorage.db.engine=ROCKSDB via system property,
    * so the engine will be ROCKSDB instead of LEVELDB.
    */
@@ -363,7 +399,8 @@ public class ArgsTest {
 
     Assert.assertEquals("database", parameter.getStorage().getDbDirectory());
     String expectedEngine = System.getProperty("storage.db.engine") != null
-        ? System.getProperty("storage.db.engine") : "LEVELDB";
+        ? System.getProperty("storage.db.engine")
+        : "LEVELDB";
     Assert.assertEquals(expectedEngine, parameter.getStorage().getDbEngine());
 
     Args.clearParam();
@@ -464,7 +501,7 @@ public class ArgsTest {
 
   @Test
   public void testAllowShieldedTransactionApiDefault() {
-    Args.setParam(new String[]{}, TestConstants.TEST_CONF);
+    Args.setParam(new String[] {}, TestConstants.TEST_CONF);
     Assert.assertFalse(Args.getInstance().isAllowShieldedTransactionApi());
     Args.getInstance().setAllowShieldedTransactionApi(true);
     Assert.assertTrue(Args.getInstance().isAllowShieldedTransactionApi());
@@ -503,10 +540,11 @@ public class ArgsTest {
 
   @Test
   public void testMaxMessageSizeNegativeValueRejected() {
-    // Negative maxMessageSize must be rejected at startup which threw TronError(PARAMETER_INIT)
+    // Negative maxMessageSize must be rejected at startup which threw
+    // TronError(PARAMETER_INIT)
     // for negative values).
-    for (String key : new String[]{
-        "node.rpc.maxMessageSize", "node.http.maxMessageSize", "node.jsonrpc.maxMessageSize"}) {
+    for (String key : new String[] {
+        "node.rpc.maxMessageSize", "node.http.maxMessageSize", "node.jsonrpc.maxMessageSize" }) {
       Map<String, String> configMap = new HashMap<>();
       configMap.put("storage.db.directory", "database");
       configMap.put(key, "-1");
@@ -541,7 +579,7 @@ public class ArgsTest {
 
   @Test
   public void testCheckBackupMembersWithIpPasses() throws Exception {
-    Args.setParam(new String[]{}, TestConstants.TEST_CONF);
+    Args.setParam(new String[] {}, TestConstants.TEST_CONF);
     CommonParameter.getInstance().setBackupMembers(Arrays.asList("1.2.3.4", "10.0.0.1"));
     Method method = Args.class.getDeclaredMethod("checkBackupMembers");
     method.setAccessible(true);
@@ -550,7 +588,7 @@ public class ArgsTest {
 
   @Test(timeout = 5000)
   public void testCheckBackupMembersUnresolvableDomainThrows() throws Exception {
-    Args.setParam(new String[]{}, TestConstants.TEST_CONF);
+    Args.setParam(new String[] {}, TestConstants.TEST_CONF);
     CommonParameter.getInstance().setBackupMembers(
         Arrays.asList("bad.invalid.domain"));
     Method method = Args.class.getDeclaredMethod("checkBackupMembers");
@@ -568,14 +606,13 @@ public class ArgsTest {
 
   @Test(timeout = 5000)
   public void testCheckBackupMembersResolvableDomainPasses() throws Exception {
-    Args.setParam(new String[]{}, TestConstants.TEST_CONF);
+    Args.setParam(new String[] {}, TestConstants.TEST_CONF);
     CommonParameter.getInstance().setBackupMembers(
         Arrays.asList("peer.tron.network"));
     Method method = Args.class.getDeclaredMethod("checkBackupMembers");
     method.setAccessible(true);
     InetAddress mockAddr = InetAddress.getByName("5.5.5.5");
-    InetUtil.dnsLookup = (host, ipv4) ->
-        ("peer.tron.network".equals(host) && ipv4) ? mockAddr : null;
+    InetUtil.dnsLookup = (host, ipv4) -> ("peer.tron.network".equals(host) && ipv4) ? mockAddr : null;
     method.invoke(null);
   }
 }

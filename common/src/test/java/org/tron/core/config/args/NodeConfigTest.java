@@ -90,6 +90,28 @@ public class NodeConfigTest {
   }
 
   @Test
+  public void testListenerDefaults() {
+    NodeConfig.ListenerConfig listener = NodeConfig.fromConfig(withRef()).getListener();
+
+    assertFalse(listener.isPeerLifecycleLogEnable());
+    assertFalse(listener.isInventoryLogEnable());
+  }
+
+  @Test
+  public void testListenerSubBean() {
+    Config config = withRef(
+        "node.listener {"
+            + " peerLifecycleLogEnable = true,"
+            + " inventoryLogEnable = true"
+            + " }");
+
+    NodeConfig.ListenerConfig listener = NodeConfig.fromConfig(config).getListener();
+
+    assertTrue(listener.isPeerLifecycleLogEnable());
+    assertTrue(listener.isInventoryLogEnable());
+  }
+
+  @Test
   public void testIsOpenFullTcpDisconnect() {
     Config config = withRef(
         "node { isOpenFullTcpDisconnect = true }");
@@ -251,7 +273,8 @@ public class NodeConfigTest {
 
   @Test
   public void testValidContractProtoThreadsDefaultAutoExpands() {
-    // Default in reference.conf is 0; postProcess must expand to availableProcessors.
+    // Default in reference.conf is 0; postProcess must expand to
+    // availableProcessors.
     // Matches develop Args.java:743-746 runtime fallback.
     NodeConfig nc = NodeConfig.fromConfig(withRef());
     assertEquals(Runtime.getRuntime().availableProcessors(),
@@ -265,7 +288,8 @@ public class NodeConfigTest {
     assertEquals(3, nc.getValidContractProtoThreads());
   }
 
-  // ----- trustNode: empty reference.conf default means trustNode stays unset -----
+  // ----- trustNode: empty reference.conf default means trustNode stays unset
+  // -----
 
   @Test
   public void testTrustNodeNotDefaultedByReferenceConf() {
@@ -273,12 +297,14 @@ public class NodeConfigTest {
     assertTrue(nc.getTrustNode() == null || nc.getTrustNode().isEmpty());
   }
 
-  // ----- maxConnectionsWithSameIp alias: reference.conf must not poison merge -----
+  // ----- maxConnectionsWithSameIp alias: reference.conf must not poison merge
+  // -----
 
   @Test
   public void testMaxConnectionsWithSameIpNotOverriddenByReferenceConfAlias() {
     // reference.conf must NOT ship `maxActiveNodesWithSameIp`, otherwise the alias-
-    // fallback branch would silently clobber the user's modern key. Regression guard
+    // fallback branch would silently clobber the user's modern key. Regression
+    // guard
     // for review #2 (317787106, 2026-04-16).
     NodeConfig nc = NodeConfig.fromConfig(
         withRef("node { maxConnectionsWithSameIp = 10 }"));
@@ -336,7 +362,8 @@ public class NodeConfigTest {
 
   @Test
   public void testShieldedApiModernKeyTakesPriorityOverLegacy() {
-    // When both keys are set, the modern key wins; the legacy key is only used as fallback
+    // When both keys are set, the modern key wins; the legacy key is only used as
+    // fallback
     // when modern is absent.
     NodeConfig nc = NodeConfig.fromConfig(
         withRef("node {\n"
@@ -382,7 +409,8 @@ public class NodeConfigTest {
 
   @Test
   public void testExternalIpStringNullSentinelConvertedToEmpty() {
-    // String literal "null" (case-insensitive) is an explicit sentinel that must map to "".
+    // String literal "null" (case-insensitive) is an explicit sentinel that must
+    // map to "".
     NodeConfig nc = NodeConfig.fromConfig(
         withRef("node.discovery.external.ip = \"null\""));
     assertEquals("", nc.getDiscoveryExternalIp());
@@ -398,6 +426,5 @@ public class NodeConfigTest {
         withRef("node.discovery.external.ip = \"1.2.3.4\""));
     assertEquals("1.2.3.4", nc.getDiscoveryExternalIp());
   }
-
 
 }
