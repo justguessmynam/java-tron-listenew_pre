@@ -21,6 +21,8 @@ import java.util.concurrent.TimeUnit;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
@@ -56,6 +58,12 @@ import org.tron.protos.Protocol;
 @Component
 @Scope("prototype")
 public class PeerConnection {
+  /*
+   * Dedicated logger for peer lifecycle observations.
+   * Its output is isolated from tron.log and written asynchronously
+   * to logs/listener/listener.log.
+   */
+  private static final Logger listenerLogger = LoggerFactory.getLogger("LISTENER");
 
   private static List<InetSocketAddress> relayNodes = Args.getInstance().getFastForwardNodes();
 
@@ -170,6 +178,17 @@ public class PeerConnection {
 
   public void setChannel(Channel channel) {
     this.channel = channel;
+    /*
+     * Record the underlying channel before the TRON handshake completes.
+     * remote is the peer address, active indicates outbound/inbound direction,
+     * and startTime is the channel creation time in epoch milliseconds.
+     */
+    listenerLogger.info(
+        "PEER_CHANNEL_OPEN remote={} active={} startTime={}",
+        channel.getInetSocketAddress(),
+        channel.isActive(),
+        channel.getStartTime());
+
     if (relayNodes != null
         && relayNodes.stream().anyMatch(n -> n.getAddress().equals(channel.getInetAddress()))) {
       this.isRelayPeer = true;
@@ -208,6 +227,20 @@ public class PeerConnection {
   public void onConnect() {
     long headBlockNum = helloMessageSend.getHeadBlockId().getNum();
     long peerHeadBlockNum = helloMessageReceive.getHeadBlockId().getNum();
+    /*
+     * Record a successfully initialized TRON peer.
+     * latencyMs is the average channel latency measured by java-tron.
+     * localHead and remoteHead are the block heights advertised in
+     * the exchanged HELLO messages.
+     */
+    listenerLogger.info(
+        "PEER_HANDSHAKE_COMPLETE remote={} active={} latencyMs={} "
+            + "localHead={} remoteHead={}",
+        channel.getInetSocketAddress(),
+        channel.isActive(),
+        channel.getAvgLatency(),
+        headBlockNum,
+        peerHeadBlockNum);
 
     if (peerHeadBlockNum > headBlockNum) {
       needSyncFromUs = false;
@@ -222,6 +255,34 @@ public class PeerConnection {
   }
 
   public void onDisconnect() {
+    /*
+     * localReason and remoteReason preserve the reasons recorded for
+     * each side. reason selects localReason first, then remoteReason,
+     * and falls back to UNKNOWN.
+     */
+    Protocol.ReasonCode localReason = nodeStatistics == null
+        ? null
+        : nodeStatistics.getLocalDisconnectReason();
+    Protocol.ReasonCode remoteReason = nodeStatistics == null
+        ? null
+        : nodeStatistics.getRemoteDisconnectReason();
+    Protocol.ReasonCode reason = nodeStatistics == null
+        ? Protocol.ReasonCode.UNKNOWN
+        : nodeStatistics.getDisconnectReason();
+    /*
+     * Record the final channel close. durationMs is the total channel
+     * lifetime from channel creation to this close event.
+     */
+    listenerLogger.info(
+        "PEER_CHANNEL_CLOSED remote={} active={} durationMs={} reason={} "
+            + "localReason={} remoteReason={}",
+        channel.getInetSocketAddress(),
+        channel.isActive(),
+        Math.max(0L, System.currentTimeMillis() - channel.getStartTime()),
+        reason,
+        localReason,
+        remoteReason);
+
     syncService.onDisconnect(this);
     advService.onDisconnect(this);
     advInvReceive.invalidateAll();
@@ -253,15 +314,17 @@ public class PeerConnection {
         channel.getInetSocketAddress(),
         (now - channel.getStartTime()) / Constant.ONE_THOUSAND,
         channel.getAvgLatency(),
-        fastForwardBlock != null ? fastForwardBlock.getNum() : String.format("%d [%ds]",
-            blockBothHave.getNum(), (now - blockBothHaveUpdateTime) / Constant.ONE_THOUSAND),
+        fastForwardBlock != null ? fastForwardBlock.getNum()
+            : String.format("%d [%ds]",
+                blockBothHave.getNum(), (now - blockBothHaveUpdateTime) / Constant.ONE_THOUSAND),
         isNeedSyncFromPeer(),
         isNeedSyncFromUs(),
         syncBlockToFetch.size(),
         syncBlockId != null ? syncBlockId.getNum() : -1,
         syncBlockRequested.size(),
         remainNum,
-        requested == null ? 0 : (now - requested.getValue())
+        requested == null ? 0
+            : (now - requested.getValue())
                 / Constant.ONE_THOUSAND,
         (now - lastInteractiveTime) / Constant.ONE_THOUSAND,
         syncBlockInProcess.size());
@@ -272,6 +335,17 @@ public class PeerConnection {
   }
 
   public void disconnect(Protocol.ReasonCode code) {
+    /*
+     * Record a local disconnect request before closing the channel.
+     * durationMs is the current channel lifetime and reason is the
+     * Protocol.ReasonCode selected by the local node.
+     */
+    listenerLogger.info(
+        "PEER_DISCONNECT_REQUEST remote={} active={} durationMs={} reason={}",
+        channel.getInetSocketAddress(),
+        channel.isActive(),
+        Math.max(0L, System.currentTimeMillis() - channel.getStartTime()),
+        code);
     sendMessage(new DisconnectMessage(code));
     processDisconnect(code);
     nodeStatistics.nodeDisconnectedLocal(code);
@@ -307,19 +381,19 @@ public class PeerConnection {
     MetricsUtil.counterInc(MetricsKey.NET_DISCONNECTION_COUNT);
     MetricsUtil.counterInc(MetricsKey.NET_DISCONNECTION_DETAIL + reason);
     Metrics.counterInc(MetricKeys.Counter.P2P_DISCONNECT, 1,
-            reason.name().toLowerCase(Locale.ROOT));
+        reason.name().toLowerCase(Locale.ROOT));
   }
 
   public static boolean needToLog(Message msg) {
     if (msg instanceof PingMessage
-            || msg instanceof PongMessage
-            || msg instanceof TransactionsMessage
-            || msg instanceof PbftBaseMessage) {
+        || msg instanceof PongMessage
+        || msg instanceof TransactionsMessage
+        || msg instanceof PbftBaseMessage) {
       return false;
     }
 
     if (msg instanceof InventoryMessage && ((InventoryMessage) msg)
-            .getInventoryType().equals(Protocol.Inventory.InventoryType.TRX)) {
+        .getInventoryType().equals(Protocol.Inventory.InventoryType.TRX)) {
       return false;
     }
 
