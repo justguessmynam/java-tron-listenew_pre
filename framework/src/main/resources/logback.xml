@@ -118,6 +118,35 @@
     <appender-ref ref="LISTENER_FILE"/>
   </appender>
 
+  <!-- Dedicated file for inventory observations. -->
+  <appender name="INV_FILE"
+    class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <file>./logs/inventory/inventory.log</file>
+    <rollingPolicy
+      class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+      <fileNamePattern>
+        ./logs/inventory/inventory-%d{yyyy-MM-dd}.%i.log.gz
+      </fileNamePattern>
+      <maxFileSize>500MB</maxFileSize>
+      <maxHistory>40</maxHistory>
+      <totalSizeCap>20GB</totalSizeCap>
+    </rollingPolicy>
+    <encoder charset="UTF-8">
+      <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %msg%n</pattern>
+      <charset>UTF-8</charset>
+    </encoder>
+  </appender>
+
+  <!-- Keep inventory file I/O away from P2P processing threads. -->
+  <appender name="INV_ASYNC"
+    class="ch.qos.logback.classic.AsyncAppender">
+    <queueSize>65536</queueSize>
+    <discardingThreshold>0</discardingThreshold>
+    <neverBlock>true</neverBlock>
+    <maxFlushTime>5000</maxFlushTime>
+    <appender-ref ref="INV_FILE"/>
+  </appender>
+
   <appender class="ch.qos.logback.classic.AsyncAppender" name="ASYNC">
     <!-- Don't discard INFO, DEBUG, TRACE events in case of queue is 80% full -->
     <discardingThreshold>0</discardingThreshold>
@@ -142,6 +171,11 @@
   <!-- Listener events are isolated from the main tron.log file. -->
   <logger name="LISTENER" level="INFO" additivity="false">
     <appender-ref ref="LISTENER_ASYNC"/>
+  </logger>
+
+  <!-- Inventory events are written to a separate file. -->
+  <logger name="INV_LISTENER" level="INFO" additivity="false">
+    <appender-ref ref="INV_ASYNC"/>
   </logger>
 
   <logger level="INFO" name="app"/>
