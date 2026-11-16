@@ -53,7 +53,7 @@ public class InventoryMsgHandler implements TronMsgHandler {
      * batchSize is the number of hashes in this message; hash identifies one item.
      */
     for (Sha256Hash id : inventoryMessage.getHashList()) {
-      if (inventoryLogEnabled) {
+      if (Args.getInstance().inventoryLogEnable) {
         invLogger.info(
             "INV remote={} active={} type={} latencyMs={} batchSize={} hash={}",
             peer.getInetSocketAddress(),
