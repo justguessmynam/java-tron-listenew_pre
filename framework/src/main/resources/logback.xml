@@ -147,6 +147,35 @@
     <appender-ref ref="INV_FILE"/>
   </appender>
 
+  <appender name="RANDOM_FILE"
+    class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <file>./logs/random/random.log</file>
+    <rollingPolicy
+      class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+      <fileNamePattern>
+        ./logs/random/random-%d{yyyy-MM-dd}.%i.log.gz
+      </fileNamePattern>
+      <maxFileSize>500MB</maxFileSize>
+      <maxHistory>40</maxHistory>
+      <totalSizeCap>20GB</totalSizeCap>
+    </rollingPolicy>
+    <encoder charset="UTF-8">
+      <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %msg%n</pattern>
+      <charset>UTF-8</charset>
+    </encoder>
+  </appender>
+
+  <!-- Keep random file I/O away from P2P processing threads. -->
+  <appender name="RANDOM_ASYNC"
+    class="ch.qos.logback.classic.AsyncAppender">
+    <queueSize>65536</queueSize>
+    <discardingThreshold>0</discardingThreshold>
+    <neverBlock>true</neverBlock>
+    <maxFlushTime>5000</maxFlushTime>
+    <appender-ref ref="RANDOM_FILE"/>
+  </appender>
+
+
   <appender class="ch.qos.logback.classic.AsyncAppender" name="ASYNC">
     <!-- Don't discard INFO, DEBUG, TRACE events in case of queue is 80% full -->
     <discardingThreshold>0</discardingThreshold>
@@ -178,6 +207,11 @@
     <appender-ref ref="INV_ASYNC"/>
   </logger>
 
+  <!-- Random events are written to a separate file. -->
+  <logger name="RANDOM_CONNECT" level="INFO" additivity="false">
+    <appender-ref ref="RANDOM_ASYNC"/>
+  </logger>
+  
   <logger level="INFO" name="app"/>
   <logger level="INFO" name="net"/>
   <logger level="INFO" name="backup"/>
