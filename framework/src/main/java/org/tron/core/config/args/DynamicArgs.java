@@ -4,6 +4,7 @@ import com.typesafe.config.Config;
 import java.io.File;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -15,7 +16,6 @@ import org.tron.common.es.ExecutorServiceManager;
 import org.tron.common.parameter.CommonParameter;
 import org.tron.core.config.Configuration;
 import org.tron.core.net.TronNetService;
-
 
 @Slf4j(topic = "app")
 @Component
@@ -69,12 +69,11 @@ public class DynamicArgs {
   }
 
   private void updateActiveNodes(NodeConfig nodeConfig) {
-    List<InetSocketAddress> newActiveNodes =
-        Args.filterInetSocketAddress(nodeConfig.getActive(), true);
+    List<InetSocketAddress> newActiveNodes = Args.filterInetSocketAddress(nodeConfig.getActive(), true);
     parameter.setActiveNodes(newActiveNodes);
-    List<InetSocketAddress> activeNodes = TronNetService.getP2pConfig().getActiveNodes();
-    activeNodes.clear();
-    activeNodes.addAll(newActiveNodes);
+    TronNetService.getP2pService().updateRandomConnectTargets(
+        newActiveNodes,
+        Collections.emptyMap());
     logger.debug("p2p active nodes : {}",
         TronNetService.getP2pConfig().getActiveNodes().toString());
   }
